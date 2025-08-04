@@ -471,12 +471,8 @@ export default function Home() {
           setTargetCharacter(character);
           setIsSpinning(true);
 
-          // Simulate spin animation duration before setting final state
-          setTimeout(() => {
-            setSelection(character);
-            setHistory(prev => [{ characterName: character.name, timestamp }, ...prev]);
-            handleSpinEnd(playerId);
-          }, 3000); // Match the spin animation duration
+          setSelection(character);
+          setHistory(prev => [{ characterName: character.name, timestamp }, ...prev]);
         }
       }
     });
