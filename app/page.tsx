@@ -1,6 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, push, onValue } from "firebase/database";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBmvI_fIPJe4aSb2_UV6tdeLlq0n-n9Yc4",
+  authDomain: "coffee-spark-sample-app-caaaf.firebaseapp.com",
+  projectId: "coffee-spark-sample-app-caaaf",
+  storageBucket: "coffee-spark-sample-app-caaaf.firebasestorage.app",
+  messagingSenderId: "789287435386",
+  appId: "1:789287435386:web:8ec9180bd86ce7d6020fc3"
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
 // Types
 type PlayerId = 'N' | 'S';
@@ -438,20 +452,35 @@ export default function Home() {
     return CHARACTER_ROSTER.filter(char => !combinedHistoryNames.has(char.name));
   }, [historyN, historyS]);
 
-  const handleSpinEnd = useCallback((playerId: PlayerId) => {
-    const targetCharacter = playerId === 'N' ? targetCharacterN : targetCharacterS;
-    if (!targetCharacter) return;
+  useEffect(() => {
+    const spinsRef = ref(database, 'spins');
+    onValue(spinsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Get the last spin entry
+        const lastSpinKey = Object.keys(data).pop();
+        if (lastSpinKey) {
+          const lastSpin = data[lastSpinKey];
+          const { playerId, character, timestamp } = lastSpin;
 
-    const setHistory = playerId === 'N' ? setHistoryN : setHistoryS;
-    const setSelection = playerId === 'N' ? setPlayerNSelection : setPlayerSSelection;
-    const setIsSpinning = playerId === 'N' ? setIsSpinningN : setIsSpinningS;
+          const setHistory = playerId === 'N' ? setHistoryN : setHistoryS;
+          const setSelection = playerId === 'N' ? setPlayerNSelection : setPlayerSSelection;
+          const setIsSpinning = playerId === 'N' ? setIsSpinningN : setIsSpinningS;
+          const setTargetCharacter = playerId === 'N' ? setTargetCharacterN : setTargetCharacterS;
 
-    const newEntry: HistoryEntry = { characterName: targetCharacter.name, timestamp: Date.now() };
-    
-    setSelection(targetCharacter);
-    setHistory(prev => [newEntry, ...prev]);
-    setIsSpinning(false);
-  }, [targetCharacterN, targetCharacterS, setHistoryN, setHistoryS]);
+          setTargetCharacter(character);
+          setIsSpinning(true);
+
+          // Simulate spin animation duration before setting final state
+          setTimeout(() => {
+            setSelection(character);
+            setHistory(prev => [{ characterName: character.name, timestamp }, ...prev]);
+            setIsSpinning(false);
+          }, 3000); // Match the spin animation duration
+        }
+      }
+    });
+  }, [setHistoryN, setHistoryS]);
 
   const handleSpin = useCallback((playerId: PlayerId) => {
     const isSpinning = playerId === 'N' ? isSpinningN : isSpinningS;
@@ -463,14 +492,14 @@ export default function Home() {
 
     const randomIndex = Math.floor(Math.random() * possibleChars.length);
     const selected = possibleChars[randomIndex];
-    
-    if (playerId === 'N') {
-        setTargetCharacterN(selected);
-        setIsSpinningN(true);
-    } else {
-        setTargetCharacterS(selected);
-        setIsSpinningS(true);
-    }
+
+    // Write to Firebase
+    push(ref(database, 'spins'), {
+      playerId,
+      character: selected,
+      timestamp: Date.now(),
+    });
+
   }, [isSpinningN, isSpinningS, availableCharacters, playerNSelection, playerSSelection]);
 
   const handleSpinBoth = useCallback(() => {
@@ -478,11 +507,18 @@ export default function Home() {
 
     const shuffled = [...availableCharacters].sort(() => 0.5 - Math.random());
     const [charN, charS] = shuffled;
-    
-    setTargetCharacterN(charN);
-    setIsSpinningN(true);
-    setTargetCharacterS(charS);
-    setIsSpinningS(true);
+
+    // Write to Firebase for both players
+    push(ref(database, 'spins'), {
+      playerId: 'N',
+      character: charN,
+      timestamp: Date.now(),
+    });
+    push(ref(database, 'spins'), {
+      playerId: 'S',
+      character: charS,
+      timestamp: Date.now(),
+    });
   }, [isSpinningN, isSpinningS, availableCharacters]);
   
   const handleSkip = useCallback((playerId: PlayerId) => {
