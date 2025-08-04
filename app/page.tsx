@@ -475,7 +475,7 @@ export default function Home() {
           setTimeout(() => {
             setSelection(character);
             setHistory(prev => [{ characterName: character.name, timestamp }, ...prev]);
-            setIsSpinning(false);
+            handleSpinEnd(playerId);
           }, 3000); // Match the spin animation duration
         }
       }
@@ -528,6 +528,11 @@ export default function Home() {
 
     setSelection(null);
     setTarget(null);
+    setIsSpinning(false);
+  }, []);
+
+  const handleSpinEnd = useCallback((playerId: PlayerId) => {
+    const setIsSpinning = playerId === 'N' ? setIsSpinningN : setIsSpinningS;
     setIsSpinning(false);
   }, []);
 
